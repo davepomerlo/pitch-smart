@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.davepomerlo.pitchsmart",
+  "appName": "Pitch Smart",
+  "webDir": "docs",
+  "android": {
+    "backgroundColor": "#f4f1e8"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "LIGHT"
+    }
+  }
+}

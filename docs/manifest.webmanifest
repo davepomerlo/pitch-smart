@@ -1,0 +1,22 @@
+{
+  "name": "Pitch Smart",
+  "short_name": "Pitch Smart",
+  "description": "Learn where to stand on a soccer pitch, play a positioning game, and run your team's lineup and subs on match day.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f1e8",
+  "theme_color": "#f4f1e8",
+  "categories": ["sports", "education", "kids"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Play", "url": "./#play", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Match day", "url": "./#coach", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
