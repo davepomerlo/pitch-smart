@@ -8,7 +8,7 @@ Works in 7 v 7, 8 v 8, 9 v 9 and 11 v 11.
 
 | Tab | What it does |
 |---|---|
-| **Learn** | Drag the ball and watch the whole team shift: wide when we have the ball, compact when they do, the nearest player pressing, nobody offside. Tap a player to read their job. Show opponents (✖), team lines and the offside line. **Set pieces**: corners, free kicks (central and wide) and throw-ins, ours or theirs, left or right side, with each player's job and the defensive wall. **Watch a move**: a full attack and defence where every pass goes to an open player through a clear passing lane (green), with blocked lanes in red. |
+| **Learn** | Drag the ball and watch the whole team shift: wide when we have the ball, compact when they do, the nearest player pressing, nobody offside. Tap a player to read their job. Show opponents (✖), team lines and the offside line. **Set pieces**: corners, free kicks (central and wide) and throw-ins, ours or theirs, left or right side, with each player's job and the defensive wall. |
 | **Play** | "Where should I stand?" 10 rounds: you get a position and a situation (open play, set pieces or a mix) and tap or drag yourself to the right spot. Points, an explanation, and a best score per team size. |
 | **Coach** | **Squad** (names, numbers, positions, absent/available), **Lineup** (formation, tap-to-place, auto-fill, bench) and **Match** (clock with halves/quarters, score and scorers, planned subs made at the next stoppage, minutes played per player with a fair-share bar, match log and a copyable match report). |
 

@@ -1,7 +1,7 @@
 /* Service worker: lets Pitch Smart open instantly and work offline (at the pitch, with no signal).
    App files are served from the cache and refreshed in the background.
    Bump VERSION whenever anything in docs/ changes so installed copies pick up the new version. */
-const VERSION = "ps-v1";
+const VERSION = "ps-v2";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png", "icons/favicon-32.png",

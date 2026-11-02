@@ -296,54 +296,6 @@ function bothTeams(form,oform,ball,phase,fk,ofk){
  for(const k in opp){if(k===oKey)continue;const p=opp[k];if(p.y<oline+0.8)p.y=oline+0.8;}
  return {pos:t.pos,key:t.key,opp,line,offside};
 }
-/* Passing lanes: how close does any defender get to the line of the pass? (metres) */
-function segInfo(p,a,b){
- const ax=a.x*.68,ay=a.y*1.05,bx=b.x*.68,by=b.y*1.05,px=p.x*.68,py=p.y*1.05;
- const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy||1,len=Math.sqrt(L2);
- const t=((px-ax)*dx+(py-ay)*dy)/L2;
- if(t<Math.min(.9,3/len))return {d:99,t,pt:null};
- const tt=Math.min(t,1),qx=ax+dx*tt,qy=ay+dy*tt;
- return {d:Math.hypot(px-qx,py-qy),t:tt,along:tt*len,pt:{x:qx/.68,y:qy/1.05}};
-}
-const LANE_OK=4,OPEN_OK=4;
-const MOVES=[[0,0],[-6,0],[6,0],[0,5],[0,-5],[-5,4],[5,4],[-5,-4],[5,-4],[-10,0],[10,0],[0,9],[-8,7],[8,7]];
-function choosePass(form,tgt,opp,ball,carrier,prev,dir,yLim){
- const good=[],blocked=[];
- for(const p of form){
-  if(p.id===carrier||p.g==='GK')continue;
-  const P0=tgt[p.id];if(!P0)continue;
-  let best=null,base=null;
-  for(const [mx,my] of MOVES){
-   let P={x:clamp(P0.x+mx,3,97),y:clamp(P0.y+my*dir,4,96)};
-   if(yLim)P.y=yLim(P.y);
-   const len=meters(ball,P);if(len<7||len>45)continue;
-   // a defender close to the passer has little time to react, so he must be almost in line to block;
-   // further along the pass he can reach up to LANE_OK metres
-   let lane=99,open=99,cut=null;
-   for(const k in opp){const si=segInfo(opp[k],ball,P),m=si.d-clamp((si.along||0)*0.25,1.5,LANE_OK)+LANE_OK;if(m<lane){lane=m;cut=k;}open=Math.min(open,meters(opp[k],P));}
-   const prog=(P.y-ball.y)*1.05*dir,mv=meters(P,P0);
-   const sc=prog+Math.min(lane,12)*.7+Math.min(open,12)*.5-Math.abs(len-18)*.2-mv*.3-((Array.isArray(prev)?prev.includes(p.id):p.id===prev)?14:0);
-   const o={id:p.id,P,len,lane,open,prog,sc,cut,moved:mv>3};
-   if(mx===0&&my===0)base=o;
-   if(lane>=LANE_OK&&open>=OPEN_OK&&(!best||sc>best.sc))best=o;
-  }
-  if(best){best.sc+=Math.random()*3;good.push(best);}
-  else if(base&&base.lane<LANE_OK)blocked.push(base);
- }
- good.sort((a,b)=>b.sc-a.sc);blocked.sort((a,b)=>b.prog-a.prog);
- return {best:good[0]||null,blocked:blocked.slice(0,2)};
-}
-function chooseLong(form,tgt,opp,ball,carrier,dir){
- let best=null;
- for(const p of form){
-  if(p.id===carrier||p.g==='GK')continue;const P=tgt[p.id];if(!P)continue;
-  const len=meters(ball,P);if(len<15||len>60)continue;
-  let open=99;for(const k in opp)open=Math.min(open,meters(opp[k],P));if(open<OPEN_OK)continue;
-  const sc=(P.y-ball.y)*1.05*dir+Math.min(open,12);
-  if(!best||sc>best.sc)best={id:p.id,P:{x:P.x,y:P.y},len,open,sc,prog:(P.y-ball.y)*1.05*dir};
- }
- return best;
-}
 function oppNodes(form,pos,sc){return form.map(p=>`<g class="ox" data-id="${p.id}"${pos?` transform="translate(${SX(pos[p.id].x)} ${SY(pos[p.id].y)})${sc?` scale(${sc})`:''}"`:''}>${OX}</g>`).join('');}
 const sideOf=b=>b.x<35?'left':b.x>65?'right':'middle';
 const whereSide=b=>{const s=sideOf(b);return s==='middle'?'in the middle':'on the '+s;};
@@ -612,7 +564,6 @@ L.init=function(){
  <div id="l-legend"></div>
  <div class="caption" id="l-caption"></div>
  <div class="toggles" id="l-tog"></div>
- <button class="btn big accent" id="l-watch" data-act="l-watch">▶ Watch a move</button>
  <div class="card" id="l-info"></div>
  <details class="card rules"><summary>⭐ The 5 golden rules of positioning ▾</summary><ol>
   <li><b>Make it BIG</b> when we have the ball: get wide and spread up the pitch.</li>
@@ -643,9 +594,7 @@ L.spCalc=function(){
 };
 L.compute=function(){
  if(isSet()){if(!L.spRes)L.spCalc();return L.spRes;}
- const t=bothTeams(L.form,L.oform,L.ball,L.phase,L.watch?L.forceKey:null,L.watch?L.oForceKey:null);
- if(L.watch&&L.passTo){const pt=L.passTo;(pt.us?t.pos:t.opp)[pt.id]={x:pt.dest.x,y:pt.dest.y};}
- return t;
+ return bothTeams(L.form,L.oform,L.ball,L.phase);
 };
 L.build=function(){
  L.form=getForm(S.learn.fmt,S.learn.form);
@@ -672,7 +621,6 @@ L.renderControls=function(){
  pb[0].textContent=set?`🚩 Our ${sp.noun}`:'⚽ We have the ball';
  pb[1].textContent=set?`🛡️ Their ${sp.noun}`:'🛡️ They have the ball';
  $('#l-hint').innerHTML=set?'🚩 Pick a set piece and a side. Tap any player to see their job.':'👉 Drag the ball ⚽ (or tap anywhere on the pitch to move it) and watch the whole team move together. Tap a player to learn their job.';
- $('#l-watch').style.display=set?'none':'';
  $('#l-fmt').innerHTML=FMT_KEYS.map(f=>`<button class="${S.learn.fmt===f?'on':''}" data-act="l-fmt" data-v="${f}">${FORMATS[f].label}</button>`).join('');
  $('#l-form').innerHTML=Object.keys(FORMATS[S.learn.fmt].forms).map(f=>`<button class="chip ${S.learn.form===f?'on':''}" data-act="l-form" data-v="${f}">${f}</button>`).join('');
  $$('#l-phase button').forEach(b=>b.classList.toggle('on',b.dataset.v===L.phase));
@@ -683,7 +631,6 @@ L.renderControls=function(){
  $('#l-opp').style.display=ui.tog.opp?'':'none';
  $('#l-legend').innerHTML=legendHTML(ui.tog.opp);
  $('#l-tog').innerHTML=tg.map(([k,l])=>`<button class="chip ${ui.tog[k]?'on':''}" data-act="l-tog" data-v="${k}">${l}</button>`).join('');
- $('#l-watch').textContent=L.watch?'■ Stop':'▶ Watch a move';
 };
 L.renderInfo=function(){
  const el=$('#l-info');const p=L.form.find(q=>q.id===ui.learnSel);
@@ -706,7 +653,7 @@ L.frame=function(ts){
   if(k>=1)L.tween=null;
  }
  const t=L.compute();L.tgt=t.pos;L.key=t.key;L.otgt=t.opp;
- const f=1-Math.exp(-dt/(L.watch?280:170));let moving=!!L.tween||L.dragging;
+ const f=1-Math.exp(-dt/170);let moving=!!L.tween||L.dragging;
  const scT=isSet()?0.72:1;L.sc=L.sc==null?scT:L.sc+(scT-L.sc)*f;if(Math.abs(scT-L.sc)>.005)moving=true;
  for(const p of L.form){
   const c=L.cur[p.id],g=L.tgt[p.id];
@@ -755,15 +702,6 @@ L.drawOverlay=function(){
    if(pts.length>1)s+=`<polyline points="${pts.map(c=>SX(c.x)+','+SY(c.y)).join(' ')}" fill="none" stroke="${GCOL[g]}" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/>`;
   }
  }
- if(L.watch&&L.lane){
-  const ln=(a,b,c,w,da)=>`<line x1="${SX(a.x)}" y1="${SY(a.y)}" x2="${SX(b.x)}" y2="${SY(b.y)}" stroke="${c}" stroke-width="${w}" stroke-dasharray="${da}" stroke-linecap="round"/>`;
-  for(const bl of L.lane.blocked){
-   s+=ln(L.lane.a,bl.b,'#f87171',.55,'1 .9');
-   const m=bl.at||{x:(L.lane.a.x+bl.b.x)/2,y:(L.lane.a.y+bl.b.y)/2};
-   lab+=`<g transform="translate(${SX(m.x)} ${SY(m.y)})"><circle r="1.5" fill="#dc2626" stroke="#fff" stroke-width=".3"/><path d="M-.6 -.6L.6 .6M.6 -.6L-.6 .6" stroke="#fff" stroke-width=".4" stroke-linecap="round"/></g>`;
-  }
-  if(L.lane.b)s+=ln(L.lane.a,L.lane.b,'#4ade80',.9,'1.8 1');
- }
  if(L.key&&cur[L.key]){
   const k=cur[L.key];
   const txt=L.phase==='attack'?'ON THE BALL':'PRESS!',w=L.phase==='attack'?14:9;
@@ -795,134 +733,7 @@ L.up=function(e){
  const q=svgPt(L.svg,e);if(!q)return;
  L.tween={a:Object.assign({},L.ball),b:q,t0:performance.now(),dur:450};L.kick();
 };
-L.showOpp=function(){
- if(ui.tog.opp)return;ui.tog.opp=true;
- const ot=L.compute().opp;
- for(const p of L.oform){L.ocur[p.id]=Object.assign({},ot[p.id]);}
-};
-L.wSet=function(fn,ms){const w=L.watch;if(!w)return;clearTimeout(w.timer);w.timer=setTimeout(()=>{if(L.watch===w)fn();},ms);};
-L.wCap=function(h){$('#l-caption').innerHTML=h;};
-L.wBall=function(b,dur){L.tween={a:Object.assign({},L.ball),b:{x:b.x,y:b.y},t0:performance.now(),dur};if(!L.raf){L.last=0;L.raf=requestAnimationFrame(L.frame);}};
-L.wAb=function(us,id){const f=us?L.form:L.oform,p=f.find(q=>q.id===id);if(!p)return 'player';if(p.g==='GK')return 'keeper';
- if(f.filter(q=>q.ab===p.ab).length>1&&p.id!==p.ab)return (p.id[0]==='L'?'left ':p.id[0]==='R'?'right ':'')+p.ab;return p.ab;};
-L.spaceAhead=function(opp,dir){const q={x:L.ball.x,y:clamp(L.ball.y+dir*8.6,6,94)};let m=99;for(const k in opp){m=Math.min(m,meters(opp[k],q),segInfo(opp[k],L.ball,q).d+3);}return m>=6?q:null;};
-L.startWatch=function(){
- if(isSet())return;
- L.watch={timer:0,passes:0,opasses:0,recent:[]};
- L.showOpp();
- L.phase='attack';L.forceKey='GK';L.oForceKey=null;L.passTo=null;L.lane=null;
- L.renderControls();L.renderInfo();
- L.wBall({x:50,y:7},1500);
- L.wCap('<b>Our keeper has the ball.</b> Everyone spreads out to make the pitch BIG and give the keeper safe passes.');
- L.wSet(L.wPass,1500+3200);
-};
-L.wPass=function(){
- const w=L.watch;if(!w)return;
- const us=L.phase==='attack';
- if(us&&L.ball.y>72)return L.wShot();
- if(us&&w.passes>=6)return L.wLose();
- if(!us&&(w.opasses>=3||L.ball.y<30))return L.wWin();
- const form=us?L.form:L.oform,tgt=us?L.tgt:L.otgt,opp=us?L.otgt:L.tgt,carrier=us?L.forceKey:L.oForceKey,dir=us?1:-1;
- const lim=us?(y=>Math.min(y,Math.max(secondHighest(opp),L.ball.y,50)-0.8)):(y=>Math.max(y,Math.min(secondLowest(opp),L.ball.y,50)+0.8));
- const ch=choosePass(form,tgt,opp,L.ball,carrier,w.recent,dir,lim);
- const who=L.wAb(us,carrier);
- const blk=ch.blocked.map(x=>({b:x.P,at:segInfo(opp[x.cut],L.ball,x.P).pt}));
- if(!ch.best&&carrier==='GK'){
-  const r=chooseLong(form,tgt,opp,L.ball,carrier,dir);
-  if(r){
-   const to=L.wAb(us,r.id);
-   L.lane={a:Object.assign({},L.ball),b:r.P,blocked:blk};
-   L.wCap(us?`Their forwards block the short passes (red), so our keeper <b>kicks it long</b> over their heads to the open ${to}.`:`Our forwards block the short passes (red), so their keeper kicks it long to their open ${to}. Good pressing!`);
-   L.drawOverlay();L.wDo(r,us,carrier,1.25);return;
-  }
- }
- if(!ch.best){
-  L.lane={a:Object.assign({},L.ball),b:null,blocked:ch.blocked.map(x=>({b:x.P,at:segInfo(opp[x.cut],L.ball,x.P).pt}))};
-  const b={x:L.ball.x,y:clamp(L.ball.y+dir*9,6,94)};
-  L.wCap(us?`Every passing lane is blocked (red), so our ${who} <b>dribbles forward</b> into space.`:'They can’t find a safe pass (our players block the lanes), so they dribble. Our closest player keeps pressing.');
-  L.wSet(()=>{L.lane=null;L.wBall(b,1900);if(us)w.passes++;else w.opasses++;L.wSet(L.wPass,1900+2600);},1500);
-  return;
- }
- if(ch.best&&ch.best.prog<3&&carrier!=='GK'&&Math.random()<.65){
-  const q=L.spaceAhead(opp,dir);
-  if(q){
-   L.lane=null;
-   L.wCap(us?`No forward pass is open, but there’s <b>space ahead</b>, so our ${who} dribbles forward into it.`:`There’s space in front of their ${who}, so they dribble forward. Our nearest player steps up to press.`);
-   L.wSet(()=>{L.wBall(q,1900);if(us)w.passes++;else w.opasses++;L.wSet(L.wPass,1900+2400);},900);
-   return;
-  }
- }
- const r=ch.best,to=L.wAb(us,r.id);
- L.lane={a:Object.assign({},L.ball),b:r.P,blocked:ch.blocked.map(x=>({b:x.P,at:segInfo(opp[x.cut],L.ball,x.P).pt}))};
- const kind=r.prog>8?'a <b>forward pass</b>':r.prog<-3?'a <b>pass back</b> to keep the ball':'a <b>pass across</b> to find space';
- const red=ch.blocked.length?` The red ${ch.blocked.length>1?'lanes are':'lane is'} blocked: ${us?'an opponent':'one of our players'} would intercept.`:'';
- const mv=r.moved?(us?` The ${to} <b>moves into space</b> to get open, so`:` Their ${to} moves into space, so`):` The ${to} is open and`;
- if(r.moved)L.passTo={id:r.id,us,dest:r.P};
- L.wCap(us?`${who.charAt(0).toUpperCase()+who.slice(1)} → ${to}: ${kind}.${mv} the green lane has no opponent in it.${red}`
-          :`They look for an open player and find their ${to} (green lane).${red} ${r.prog>8?'We drop back and stay compact.':'We shift across together to block the next pass.'}`);
- L.drawOverlay();L.wDo(r,us,carrier,1);
-};
-L.wDo=function(r,us,carrier,slow){
- const w=L.watch;
- L.wSet(()=>{
-  const dur=Math.round(clamp((1000+r.len*55)*slow,1400,3800));
-  w.recent=[carrier].concat(w.recent).slice(0,2);
-  if(us)L.forceKey=r.id;else L.oForceKey=r.id;
-  L.passTo={id:r.id,us,dest:r.P};
-  L.wBall(r.P,dur);
-  if(us)w.passes++;else w.opasses++;
-  L.wSet(()=>{L.passTo=null;L.lane=null;L.drawOverlay();L.wSet(L.wPass,2600);},dur);
- },1700);
-};
-L.wLose=function(){
- const w=L.watch;L.lane=null;
- let best=null,bd=1e9;for(const p of L.oform){if(p.g==='GK')continue;const d=meters(L.otgt[p.id],L.ball);if(d<bd){bd=d;best=p.id;}}
- L.wCap('<b>Their pressing wins the ball!</b> Switch to defending, fast: the closest player presses and everyone else gets compact.');
- L.phase='defend';L.forceKey=null;L.oForceKey=best;w.recent=[];w.opasses=0;
- L.renderControls();L.renderInfo();
- L.wSet(L.wPass,4200);
-};
-L.wShot=function(){
- const w=L.watch;L.lane=null;
- const who=L.wAb(true,L.forceKey),g={x:46+Math.random()*8,y:99.6};
- L.wCap(`<b>Shot!</b> Our ${who} shoots${L.ball.y<68?' from distance':''}… saved by their keeper!`);
- L.wBall(g,1300);
- L.wSet(()=>{
-  L.phase='defend';L.forceKey=null;L.oForceKey='GK';w.recent=[];
-  L.renderControls();L.renderInfo();
-  L.wBall({x:50,y:94},900);
-  L.wCap('<b>Their keeper has it.</b> Switch to defending: drop back and get compact. Make the pitch SMALL so their passing lanes are blocked!');
-  L.wSet(L.wPass,900+3400);
- },1300+700);
-};
-L.wWin=function(){
- const w=L.watch;
- const ch=choosePass(L.oform,L.otgt,L.tgt,L.ball,L.oForceKey,null,-1,null);
- const tryP=ch.blocked[0];
- if(tryP){
-  // they try a pass into a blocked lane: our nearest player to the lane intercepts
-  let best=null,bd=99,pt=null;
-  for(const p of L.form){if(p.g==='GK')continue;const si=segInfo(L.tgt[p.id],L.ball,tryP.P);if(si.pt&&si.d<bd){bd=si.d;best=p.id;pt=si.pt;}}
-  if(best&&pt){
-   L.lane={a:Object.assign({},L.ball),b:null,blocked:[{b:tryP.P,at:pt}]};
-   L.wCap(`They try a pass, but the lane is blocked… <b>our ${L.wAb(true,best)} intercepts it!</b> 🎉`);
-   L.drawOverlay();
-   L.wSet(()=>{
-    const dur=Math.round(clamp(800+meters(L.ball,pt)*45,1000,2400));
-    L.passTo={id:best,us:true,dest:pt};L.wBall(pt,dur);
-    L.wSet(()=>{L.passTo=null;L.lane=null;L.phase='attack';L.forceKey=best;L.oForceKey=null;L.renderControls();L.renderInfo();
-     L.wCap('<b>We won it back!</b> Now everyone spreads out again to make the pitch BIG. ✅ That’s the end of the move.');
-     L.wSet(L.stopWatch,5000);},dur);
-   },1700);
-   return;
-  }
- }
- L.lane=null;const pid=L.key;
- L.phase='attack';L.forceKey=pid;L.oForceKey=null;L.renderControls();L.renderInfo();
- L.wCap(`<b>Our pressure works!</b> Our ${L.wAb(true,pid)} wins the ball. Now everyone spreads out again. ✅ That’s the end of the move.`);
- L.wSet(L.stopWatch,5000);
-};
-L.stopWatch=function(){if(L.watch){clearTimeout(L.watch.timer);L.watch=null;}L.forceKey=null;L.oForceKey=null;L.passTo=null;L.lane=null;L.renderControls();L.caption();L.kick();};
+L.stopWatch=function(){L.watch=null;};
 
 /* =========================================================
    PLAY — "Where should I stand?"
@@ -1313,7 +1124,6 @@ document.addEventListener('click',e=>{
   case 'l-form':S.learn.form=v;save();L.build();break;
   case 'l-phase':if(L.watch)L.stopWatch();L.phase=v;if(isSet())L.spCalc();L.renderControls();L.renderInfo();L.kick();break;
   case 'l-tog':ui.tog[v]=!ui.tog[v];if(v==='opp'&&ui.tog.opp){const ot=L.compute().opp;for(const p of L.oform){L.ocur[p.id]=Object.assign({},ot[p.id]);const n=L.onodes[p.id];if(n)n.setAttribute('transform',`translate(${SX(ot[p.id].x)} ${SY(ot[p.id].y)})`);}}L.renderControls();L.drawOverlay();L.kick();break;
-  case 'l-watch':if(L.watch)L.stopWatch();else L.startWatch();break;
   /* game */
   case 'g-fmt':S.game.fmt=v;save();renderGame();break;
   case 'g-mode':S.game.mode=v;save();renderGame();break;
